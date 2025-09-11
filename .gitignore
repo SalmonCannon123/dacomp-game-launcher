@@ -1,0 +1,36 @@
+# Arquivos de Bytecode e Cache do Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Pastas de ambientes virtuais
+# venv/
+# env/
+# .venv/
+# .env/
+
+# Arquivos de configuração de IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs de instalação do pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Arquivos de build (caso use ferramentas como PyInstaller)
+/dist/
+/build/
+*.spec
+
+# Ignorar conteúdo das pastas de jogos e capas
+covers/*
+games/*
+
+# Manter as pastas no repositório com .gitkeep
+!covers/.gitkeep
+!games/.gitkeep
+#
+games.json
