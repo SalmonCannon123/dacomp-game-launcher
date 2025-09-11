@@ -5,8 +5,7 @@ import sys
 import os
 
 # --- Configurações Visuais e de Áudio ---
-SCREEN_WIDTH = 1280
-SCREEN_HEIGHT = 720
+# As dimensões agora serão obtidas dinamicamente para o modo tela cheia
 BACKGROUND_COLOR = (15, 15, 20) # Um azul bem escuro
 FONT_COLOR = (240, 240, 240)
 HIGHLIGHT_COLOR = (255, 200, 80)
@@ -20,26 +19,46 @@ SELECTED_COVER_SCALE = 1.05
 # --- Inicialização ---
 pygame.init()
 pygame.mixer.init() # Inicializa o mixer de áudio
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+# Configura para tela cheia
+screen_info = pygame.display.Info()
+SCREEN_WIDTH = screen_info.current_w
+SCREEN_HEIGHT = screen_info.current_h
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
 pygame.display.set_caption("DACOMP Fliperama Launcher")
 
 # --- Carregamento de Recursos (Fontes e Sons) ---
 try:
     font_title = pygame.font.Font('font/Roboto-Bold.ttf', 58)
     font_desc = pygame.font.Font('font/Roboto-Regular.ttf', 24)
+    font_volume = pygame.font.Font('font/Roboto-Regular.ttf', 20)
 except FileNotFoundError:
     font_title = pygame.font.Font(None, 64)
     font_desc = pygame.font.Font(None, 28)
+    font_volume = pygame.font.Font(None, 24)
+
+# Variável de volume
+current_volume = 0.5
 
 try:
     sound_navigate = pygame.mixer.Sound('audio/navigate.wav')
     sound_select = pygame.mixer.Sound('audio/select.wav')
-    pygame.mixer.music.set_volume(0.5)
+    sound_navigate.set_volume(current_volume)
+    sound_select.set_volume(current_volume)
+    pygame.mixer.music.set_volume(current_volume)
 except pygame.error as e:
     print(f"Aviso: Não foi possível carregar os arquivos de áudio: {e}")
     sound_navigate = sound_select = None
 
 # --- Funções Auxiliares ---
+def set_global_volume(level):
+    """Define o volume para todos os sons e música."""
+    global current_volume
+    current_volume = max(0.0, min(1.0, level)) # Garante que o volume fique entre 0 e 1
+    if sound_navigate: sound_navigate.set_volume(current_volume)
+    if sound_select: sound_select.set_volume(current_volume)
+    pygame.mixer.music.set_volume(current_volume)
+
 def load_games():
     try:
         with open(GAMES_FILE, 'r', encoding='utf-8') as f:
@@ -115,15 +134,21 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT: running = False
             if event.type == pygame.KEYDOWN:
-                if (event.key == pygame.K_RIGHT or event.key == pygame.K_DOWN) and selected_index < len(games) - 1:
-                    selected_index += 1
-                    if sound_navigate: sound_navigate.play()
-                elif (event.key == pygame.K_LEFT or event.key == pygame.K_UP) and selected_index > 0:
-                    selected_index -= 1
-                    if sound_navigate: sound_navigate.play()
+                if event.key == pygame.K_RIGHT:
+                    if selected_index < len(games) - 1:
+                        selected_index += 1
+                        if sound_navigate: sound_navigate.play()
+                elif event.key == pygame.K_LEFT:
+                    if selected_index > 0:
+                        selected_index -= 1
+                        if sound_navigate: sound_navigate.play()
+                elif event.key == pygame.K_UP: # Aumentar volume
+                    set_global_volume(current_volume + 0.1)
+                elif event.key == pygame.K_DOWN: # Diminuir volume
+                    set_global_volume(current_volume - 0.1)
                 elif event.key == pygame.K_RETURN and games:
                     launch_game(games[selected_index].get('command'))
-                elif event.key == pygame.K_ESCAPE:
+                elif event.key == pygame.K_ESCAPE: # Comando para sair
                     running = False
 
         # --- Lógica de Animação e Atualização ---
@@ -162,8 +187,14 @@ def main():
         for i, line in enumerate(wrapped_lines):
             desc_surf = font_desc.render(line.strip(), True, DESCRIPTION_COLOR)
             screen.blit(desc_surf, (50, 130 + i * 30))
+            
+        # 3. Desenha o indicador de Volume
+        volume_text = f"Volume: {int(current_volume * 100)}%"
+        volume_surf = font_volume.render(volume_text, True, FONT_COLOR)
+        screen.blit(volume_surf, (SCREEN_WIDTH - volume_surf.get_width() - 20, 20))
 
-        # 3. Desenha as Capas (Carrossel)
+
+        # 4. Desenha as Capas (Carrossel)
         cover_y_base = SCREEN_HEIGHT * 0.75
         for i, game in enumerate(games):
             cover_img = loaded_covers[i]

@@ -28,9 +28,11 @@ pip-delete-this-directory.txt
 # Ignorar conteúdo das pastas de jogos e capas
 covers/*
 games/*
-
+backgrounds/*
 # Manter as pastas no repositório com .gitkeep
 !covers/.gitkeep
 !games/.gitkeep
+!backgrounds/.gitkeep
+
 #
 games.json
