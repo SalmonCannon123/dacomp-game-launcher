@@ -66,14 +66,31 @@ def load_games():
     except (FileNotFoundError, json.JSONDecodeError):
         return [{"name": "Nenhum jogo configurado", "description": "Use a admin_tool.py para adicionar jogos."}]
 
-def launch_game(command):
+def launch_game(game_info):
+    """Lança o jogo e espera ele ser fechado."""
+    command = game_info.get('command')
+    fullscreen_args = game_info.get('fullscreen_args', '')
     if not command: return
+
+    full_command = command.split()
+    if fullscreen_args:
+        full_command.extend(fullscreen_args.split())
+
     if sound_select: sound_select.play()
-    print(f"Executando comando: {command}")
+    print(f"Executando comando: {' '.join(full_command)}")
     try:
-        subprocess.Popen(command.split())
+        # Usamos Popen para iniciar o processo...
+        process = subprocess.Popen(full_command)
+        # ... e wait() para pausar o launcher até o processo do jogo terminar.
+        process.wait()
+        
+        # Reafirma o modo tela cheia do launcher para o caso de ter sido minimizado
+        global screen
+        screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.FULLSCREEN)
+
     except Exception as e:
         print(f"Erro ao executar o jogo: {e}")
+
 
 def wrap_text(text, font, max_width):
     """Quebra o texto em várias linhas para caber em uma largura máxima."""
@@ -147,7 +164,7 @@ def main():
                 elif event.key == pygame.K_DOWN: # Diminuir volume
                     set_global_volume(current_volume - 0.1)
                 elif event.key == pygame.K_RETURN and games:
-                    launch_game(games[selected_index].get('command'))
+                    launch_game(games[selected_index])
                 elif event.key == pygame.K_ESCAPE: # Comando para sair
                     running = False
 

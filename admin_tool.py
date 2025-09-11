@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import ttk # Importar ttk para usar o Combobox
 from tkinter import messagebox, filedialog
 import json
 import os
@@ -8,8 +9,8 @@ GAMES_FILE = 'games.json'
 class AdminTool:
     def __init__(self, root):
         self.root = root
-        self.root.title("Ferramenta de Administração do Fliperama v2.0")
-        self.root.geometry("800x600")
+        self.root.title("Ferramenta de Administração do Fliperama v2.2")
+        self.root.geometry("800x650")
 
         self.games = self.load_games()
 
@@ -36,7 +37,6 @@ class AdminTool:
         
         tk.Label(edit_frame, text="Detalhes do Jogo").pack(anchor=tk.W)
 
-        # Usamos um grid para alinhar os campos
         fields_grid = tk.Frame(edit_frame, pady=10)
         fields_grid.pack(fill=tk.X)
 
@@ -48,23 +48,35 @@ class AdminTool:
         self.command_entry = tk.Entry(fields_grid, width=50)
         self.command_entry.grid(row=1, column=1, columnspan=2, sticky=tk.EW)
 
-        tk.Label(fields_grid, text="Capa (Cover):").grid(row=2, column=0, sticky=tk.W, pady=2)
-        self.cover_entry = tk.Entry(fields_grid, width=50)
-        self.cover_entry.grid(row=2, column=1, sticky=tk.EW)
-        tk.Button(fields_grid, text="Procurar...", command=lambda: self.browse_file(self.cover_entry, "Selecione a imagem da capa")).grid(row=2, column=2)
-
-        tk.Label(fields_grid, text="Fundo (Background):").grid(row=3, column=0, sticky=tk.W, pady=2)
-        self.background_entry = tk.Entry(fields_grid, width=50)
-        self.background_entry.grid(row=3, column=1, sticky=tk.EW)
-        tk.Button(fields_grid, text="Procurar...", command=lambda: self.browse_file(self.background_entry, "Selecione a imagem de fundo")).grid(row=3, column=2)
+        # --- NOVO: Combobox para Argumentos de Tela Cheia ---
+        tk.Label(fields_grid, text="Args. Tela Cheia:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        self.fullscreen_options = [
+            "", # Opção vazia
+            "--fullscreen",
+            "-fullscreen",
+            "-f",
+            "-screen-fullscreen 1", # Comum em jogos Unity
+            "-window -maximize"     # Simulação para MAME, etc.
+        ]
+        self.fullscreen_args_combo = ttk.Combobox(fields_grid, values=self.fullscreen_options)
+        self.fullscreen_args_combo.grid(row=2, column=1, columnspan=2, sticky=tk.EW)
         
-        tk.Label(fields_grid, text="Descrição:").grid(row=4, column=0, sticky=tk.NW, pady=2)
+        tk.Label(fields_grid, text="Capa (Cover):").grid(row=3, column=0, sticky=tk.W, pady=2)
+        self.cover_entry = tk.Entry(fields_grid, width=50)
+        self.cover_entry.grid(row=3, column=1, sticky=tk.EW)
+        tk.Button(fields_grid, text="Procurar...", command=lambda: self.browse_file(self.cover_entry, "Selecione a imagem da capa")).grid(row=3, column=2)
+
+        tk.Label(fields_grid, text="Fundo (Background):").grid(row=4, column=0, sticky=tk.W, pady=2)
+        self.background_entry = tk.Entry(fields_grid, width=50)
+        self.background_entry.grid(row=4, column=1, sticky=tk.EW)
+        tk.Button(fields_grid, text="Procurar...", command=lambda: self.browse_file(self.background_entry, "Selecione a imagem de fundo")).grid(row=4, column=2)
+        
+        tk.Label(fields_grid, text="Descrição:").grid(row=5, column=0, sticky=tk.NW, pady=2)
         self.description_text = tk.Text(fields_grid, height=5, width=50)
-        self.description_text.grid(row=4, column=1, columnspan=2, sticky=tk.EW)
+        self.description_text.grid(row=5, column=1, columnspan=2, sticky=tk.EW)
 
         fields_grid.columnconfigure(1, weight=1)
 
-        # Botões de ação
         button_frame = tk.Frame(root, pady=10)
         button_frame.pack()
         tk.Button(button_frame, text="Novo Jogo", command=self.new_game).pack(side=tk.LEFT, padx=5)
@@ -97,6 +109,7 @@ class AdminTool:
         self.clear_entries()
         self.name_entry.insert(0, game.get('name', ''))
         self.command_entry.insert(0, game.get('command', ''))
+        self.fullscreen_args_combo.set(game.get('fullscreen_args', '')) # Usar .set() para o Combobox
         self.cover_entry.insert(0, game.get('cover_image', ''))
         self.background_entry.insert(0, game.get('background_image', ''))
         self.description_text.insert(tk.END, game.get('description', ''))
@@ -114,6 +127,7 @@ class AdminTool:
         game_data = {
             'name': name,
             'command': self.command_entry.get(),
+            'fullscreen_args': self.fullscreen_args_combo.get(), # Usar .get() para o Combobox
             'cover_image': self.cover_entry.get(),
             'background_image': self.background_entry.get(),
             'description': self.description_text.get("1.0", tk.END).strip()
@@ -121,13 +135,19 @@ class AdminTool:
 
         self.games[self.selected_index] = game_data
         self.populate_list()
-        # Reselect the item
         self.listbox.selection_set(self.selected_index)
         messagebox.showinfo("Sucesso", f"Alterações para '{name}' salvas na memória.\nClique em 'Salvar Tudo no JSON' para persistir.")
 
     def new_game(self):
         self.clear_entries()
-        new_game = {'name': 'Novo Jogo', 'command': '', 'cover_image': '', 'background_image': '', 'description': ''}
+        new_game = {
+            'name': 'Novo Jogo', 
+            'command': '', 
+            'fullscreen_args': '',
+            'cover_image': '', 
+            'background_image': '', 
+            'description': ''
+        }
         self.games.append(new_game)
         new_index = len(self.games) - 1
         self.populate_list()
@@ -136,7 +156,6 @@ class AdminTool:
         self.on_select(None)
         self.name_entry.focus()
         self.name_entry.selection_range(0, tk.END)
-
 
     def remove_game(self):
         if self.selected_index is None or not self.listbox.curselection():
@@ -174,6 +193,7 @@ class AdminTool:
     def clear_entries(self):
         self.name_entry.delete(0, tk.END)
         self.command_entry.delete(0, tk.END)
+        self.fullscreen_args_combo.set('') # Usar .set('') para limpar o Combobox
         self.cover_entry.delete(0, tk.END)
         self.background_entry.delete(0, tk.END)
         self.description_text.delete("1.0", tk.END)
